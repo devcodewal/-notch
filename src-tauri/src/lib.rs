@@ -32,7 +32,11 @@ pub struct LyricsResult {
 async fn get_media() -> Option<MediaInfo> {
     #[cfg(windows)]
     {
-        media::get_media().await
+        // The SMTC wait below blocks briefly; keep it off the async runtime.
+        tokio::task::spawn_blocking(media::get_media)
+            .await
+            .ok()
+            .flatten()
     }
     #[cfg(not(windows))]
     {
@@ -44,7 +48,9 @@ async fn get_media() -> Option<MediaInfo> {
 async fn media_toggle() -> bool {
     #[cfg(windows)]
     {
-        media::toggle().await
+        tokio::task::spawn_blocking(media::toggle)
+            .await
+            .unwrap_or(false)
     }
     #[cfg(not(windows))]
     {
@@ -56,7 +62,9 @@ async fn media_toggle() -> bool {
 async fn media_next() -> bool {
     #[cfg(windows)]
     {
-        media::skip_next().await
+        tokio::task::spawn_blocking(media::skip_next)
+            .await
+            .unwrap_or(false)
     }
     #[cfg(not(windows))]
     {
@@ -68,7 +76,9 @@ async fn media_next() -> bool {
 async fn media_prev() -> bool {
     #[cfg(windows)]
     {
-        media::skip_prev().await
+        tokio::task::spawn_blocking(media::skip_prev)
+            .await
+            .unwrap_or(false)
     }
     #[cfg(not(windows))]
     {

@@ -1,51 +1,70 @@
 //! Windows System Media Transport Controls (SMTC) access.
 //! Reads whatever is currently playing in any player that reports to the
 //! Windows media overlay: Spotify, Apple Music, YouTube in a browser, etc.
-//! Every failure returns None/false on purpose: no player, no session, or a
-//! denied request just means "nothing playing right now", never a crash.
+//!
+//! LESSON LEARNED (25 Okt 2026, proven by CI error E0277):
+//! windows-rs's `IAsyncOperation` does NOT implement `Future` in this
+//! setup, so `.await` on it does not compile. Instead of awaiting, we wait
+//! for completion by polling `Status()` and then call `GetResults()`.
+//! These are fast local COM calls (milliseconds), and the wait runs on a
+//! blocking thread via `spawn_blocking` in lib.rs, so nothing stalls.
 
 #[cfg(windows)]
 use crate::MediaInfo;
 #[cfg(windows)]
-use windows::Media::Control::{
-    GlobalSystemMediaTransportControlsSessionManager,
-    GlobalSystemMediaTransportControlsSessionPlaybackStatus,
+use windows::{
+    core::Result as WinResult,
+    Foundation::{AsyncStatus, IAsyncOperation},
+    Media::Control::{
+        GlobalSystemMediaTransportControlsSession,
+        GlobalSystemMediaTransportControlsSessionManager,
+        GlobalSystemMediaTransportControlsSessionPlaybackStatus,
+    },
 };
 
+/// Block until a WinRT async operation finishes, then return its result.
 #[cfg(windows)]
-async fn current_session(
-) -> Option<windows::Media::Control::GlobalSystemMediaTransportControlsSession> {
-    let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
-        .ok()?
-        .await
-        .ok()?;
-    manager.GetCurrentSession().ok()
+fn wait<T>(op: IAsyncOperation<T>) -> WinResult<T>
+where
+    T: windows::core::RuntimeType,
+{
+    loop {
+        match op.Status()? {
+            AsyncStatus::Completed => return op.GetResults(),
+            AsyncStatus::Error | AsyncStatus::Canceled => {
+                return Err(op.ErrorCode()?.into())
+            }
+            _ => std::thread::sleep(std::time::Duration::from_millis(5)),
+        }
+    }
 }
 
 #[cfg(windows)]
-fn hstring_to_string(h: windows::core::HSTRING) -> String {
-    h.to_string()
+fn current_session() -> Option<GlobalSystemMediaTransportControlsSession> {
+    let manager =
+        wait(GlobalSystemMediaTransportControlsSessionManager::RequestAsync().ok()?).ok()?;
+    manager.GetCurrentSession().ok()
 }
 
 /// Current track + position, or None when nothing is playing.
 #[cfg(windows)]
-pub async fn get_media() -> Option<MediaInfo> {
-    let session = current_session().await?;
-    let props = session.TryGetMediaPropertiesAsync().ok()?.await.ok()?;
+pub fn get_media() -> Option<MediaInfo> {
+    let session = current_session()?;
+    let props = wait(session.TryGetMediaPropertiesAsync().ok()?).ok()?;
     let timeline = session.GetTimelineProperties().ok()?;
     let playback = session.GetPlaybackInfo().ok()?;
 
-    let status = playback.PlaybackStatus().ok()?;
-    let playing = status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
+    let playing = playback.PlaybackStatus().ok()?
+        == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
 
     // TimeSpan stores 100-nanosecond ticks.
     let position_secs = timeline.Position().ok()?.Duration as f64 / 10_000_000.0;
     let duration_secs = timeline.EndTime().ok()?.Duration as f64 / 10_000_000.0;
 
     Some(MediaInfo {
-        title: hstring_to_string(props.Title().ok()?),
-        artist: hstring_to_string(props.Artist().ok()?),
-        album: hstring_to_string(props.AlbumTitle().ok()?),
+        title: props.Title().ok()?.to_string(),
+        artist: props.Artist().ok()?.to_string(),
+        album: props.AlbumTitle().ok()?.to_string(),
         duration_secs,
         position_secs,
         playing,
@@ -53,31 +72,34 @@ pub async fn get_media() -> Option<MediaInfo> {
 }
 
 #[cfg(windows)]
-pub async fn toggle() -> bool {
-    if let Some(s) = current_session().await {
-        if let Ok(op) = s.TryTogglePlayPauseAsync() {
-            return op.await.is_ok();
-        }
-    }
-    false
+pub fn toggle() -> bool {
+    let Some(session) = current_session() else {
+        return false;
+    };
+    let Ok(op) = session.TryTogglePlayPauseAsync() else {
+        return false;
+    };
+    wait(op).is_ok()
 }
 
 #[cfg(windows)]
-pub async fn skip_next() -> bool {
-    if let Some(s) = current_session().await {
-        if let Ok(op) = s.TrySkipNextAsync() {
-            return op.await.is_ok();
-        }
-    }
-    false
+pub fn skip_next() -> bool {
+    let Some(session) = current_session() else {
+        return false;
+    };
+    let Ok(op) = session.TrySkipNextAsync() else {
+        return false;
+    };
+    wait(op).is_ok()
 }
 
 #[cfg(windows)]
-pub async fn skip_prev() -> bool {
-    if let Some(s) = current_session().await {
-        if let Ok(op) = s.TrySkipPreviousAsync() {
-            return op.await.is_ok();
-        }
-    }
-    false
+pub fn skip_prev() -> bool {
+    let Some(session) = current_session() else {
+        return false;
+    };
+    let Ok(op) = session.TrySkipPreviousAsync() else {
+        return false;
+    };
+    wait(op).is_ok()
 }
