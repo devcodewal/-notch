@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>notch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0A0A0F;color:#F5F3EE;overflow:hidden}
+.disp{font-family:'Space Grotesk',sans-serif}
+.desktop{position:relative;width:100vw;height:100vh;background:#0B0B11;overflow:hidden}
+.horizon{position:absolute;left:0;right:0;bottom:52px;height:1px;background:rgba(255,176,32,.45)}
+.sun{position:absolute;left:50%;bottom:52px;transform:translate(-50%,50%);width:150px;height:150px;border-radius:50%;background:#FFB020;opacity:.9}
+.sunset{position:absolute;left:0;right:0;bottom:52px;height:150px;background:#12121B}
+.hint{position:absolute;left:50%;transform:translateX(-50%);top:170px;text-align:center;color:#8A8A93;font-size:13px;line-height:1.8;z-index:1}
+.hint b{color:#F5F3EE;font-weight:600}
+.switcher{position:absolute;left:50%;transform:translateX(-50%);bottom:74px;display:flex;gap:6px;z-index:6;background:rgba(12,12,18,.8);border:1px solid rgba(255,255,255,.08);padding:6px;border-radius:99px;backdrop-filter:blur(8px)}
+.switcher button{border:none;background:transparent;color:#8A8A93;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:8px 15px;border-radius:99px;cursor:pointer}
+.switcher button.on{background:#FFB020;color:#111}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);background:#050507;border:1px solid rgba(255,255,255,.09);border-top:none;border-radius:0 0 26px 26px;width:340px;height:36px;z-index:10;overflow:hidden;cursor:pointer;transition:width .45s cubic-bezier(.34,1.35,.64,1),height .45s cubic-bezier(.34,1.35,.64,1);box-shadow:0 18px 40px rgba(0,0,0,.55),0 4px 0 rgba(255,176,32,.35)}
+.notch:hover,.notch.open{width:560px;height:470px}
+.collapsed{height:36px;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:13px;font-weight:600}
+.eq{display:flex;align-items:flex-end;gap:2px;height:14px}
+.eq i{display:block;width:3px;background:#FFB020;border-radius:2px;animation:eq 1s ease-in-out infinite}
+.eq i:nth-child(1){height:8px;animation-delay:0s}.eq i:nth-child(2){height:14px;animation-delay:.15s}.eq i:nth-child(3){height:10px;animation-delay:.3s}.eq i:nth-child(4){height:6px;animation-delay:.45s}
+.eq.paused i{animation-play-state:paused;height:4px!important}
+@keyframes eq{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+.ticker{flex:1;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12px,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12px,#000 88%,transparent)}
+.ticker > span{display:inline-block;white-space:nowrap;animation:tick 14s linear infinite;color:#FFB020}
+.ticker.paused > span{animation-play-state:paused}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.collapsed .clock{color:#8A8A93;font-weight:500;font-variant-numeric:tabular-nums}
+.expanded{opacity:0;transition:opacity .25s;padding:20px 22px}
+.notch:hover .expanded,.notch.open .expanded{opacity:1;transition-delay:.15s}
+.seg{display:flex;gap:6px;margin-bottom:16px}
+.seg button{border:none;background:#15151E;color:#8A8A93;font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.seg button.on{background:#F5F3EE;color:#111}
+.view{display:none}
+.view.show{display:block}
+.music{display:flex;gap:14px;align-items:center}
+.cover{width:58px;height:58px;min-width:58px;border-radius:14px;background:#1B1B24;border:1px solid rgba(255,176,32,.4);display:flex;align-items:center;justify-content:center}
+.cover svg{width:26px;height:26px;fill:#FFB020}
+.music h3{font-size:16px;font-family:'Space Grotesk',sans-serif}
+.music p{font-size:12px;color:#8A8A93;margin-top:3px}
+.controls{display:flex;gap:6px;margin-left:auto;align-items:center}
+.controls button{width:34px;height:34px;border-radius:50%;border:none;background:#17171F;color:#F5F3EE;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.controls button svg{width:15px;height:15px;fill:#F5F3EE}
+.controls button.play{background:#FFB020;width:42px;height:42px}
+.controls button.play svg{fill:#111}
+.progress{margin-top:16px}
+.progress .bar{height:4px;background:#23232E;border-radius:99px;overflow:hidden}
+.progress .bar i{display:block;height:100%;width:42%;background:#FFB020;border-radius:99px}
+.times{display:flex;justify-content:space-between;font-size:11px;color:#8A8A93;margin-top:6px;font-variant-numeric:tabular-nums}
+.lyrics{margin-top:16px}
+.lyrics .line{padding:8px 12px;border-radius:10px;font-size:14px;color:#6E6E78;cursor:pointer;transition:all .3s;line-height:1.5}
+.lyrics .line.cur{color:#FFB020;font-size:19px;font-weight:700;font-family:'Space Grotesk',sans-serif;background:rgba(255,176,32,.07)}
+.lyrics .line.sung{color:#B9B9C2}
+.pomo{text-align:center;padding:16px 0 4px}
+.pomo .t{font-size:56px;font-weight:700;letter-spacing:2px;font-variant-numeric:tabular-nums}
+.pomo .ring{height:5px;background:#23232E;border-radius:99px;margin:18px 0;overflow:hidden}
+.pomo .ring i{display:block;height:100%;width:66%;background:#FFB020;border-radius:99px}
+.pomo button{border:none;background:#FFB020;color:#111;font-weight:700;font-size:13px;padding:11px 24px;border-radius:99px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.pomo p{font-size:12px;color:#8A8A93;margin-top:12px}
+.todo label{display:flex;gap:12px;align-items:center;padding:12px 2px;font-size:14px;cursor:pointer;border-bottom:1px solid #1A1A22}
+.todo label:last-child{border:none}
+.todo .box{width:19px;height:19px;min-width:19px;border-radius:6px;border:2px solid #3A3A46;display:flex;align-items:center;justify-content:center}
+.todo .box svg{width:11px;height:11px;fill:none;stroke:#111;stroke-width:3;display:none}
+.todo label.done .box{background:#FFB020;border-color:#FFB020}
+.todo label.done .box svg{display:block}
+.todo label.done span{color:#6E6E78;text-decoration:line-through}
+.todo input{display:none}
+.shelf{display:flex;flex-direction:column;gap:8px}
+.file{display:flex;gap:12px;align-items:center;background:#12121A;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:12px 14px}
+.file .fi{width:36px;height:36px;min-width:36px;border-radius:9px;background:#1C1C26;display:flex;align-items:center;justify-content:center}
+.file .fi svg{width:18px;height:18px;fill:#FFB020}
+.file b{font-size:13px;display:block}
+.file span{font-size:12px;color:#8A8A93}
+.idle{text-align:center;padding:30px 0 10px}
+.idle .wave{display:flex;gap:4px;justify-content:center;align-items:center;height:34px;margin-bottom:16px}
+.idle .wave i{width:4px;background:#FFB020;border-radius:3px;animation:eq 1.8s ease-in-out infinite}
+.idle .wave i:nth-child(1){height:14px}.idle .wave i:nth-child(2){height:28px;animation-delay:.2s}.idle .wave i:nth-child(3){height:20px;animation-delay:.4s}.idle .wave i:nth-child(4){height:30px;animation-delay:.6s}.idle .wave i:nth-child(5){height:16px;animation-delay:.8s}
+.idle p{color:#8A8A93;font-size:13px;line-height:1.7}
+.idle p b{color:#F5F3EE}
+.taskbar{position:absolute;left:0;right:0;bottom:0;height:52px;background:rgba(10,10,15,.88);border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;gap:8px;z-index:5}
+.taskbar .ic{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.taskbar .ic:hover{background:rgba(255,255,255,.08)}
+.taskbar .ic svg{width:20px;height:20px;fill:#C9C9D1}
+.taskbar .tray{position:absolute;right:12px;display:flex;align-items:center;gap:10px;font-size:12px;color:#C9C9D1;text-align:right;line-height:1.4}
+.taskbar .tray svg{width:16px;height:16px;fill:#C9C9D1}
+/* ---- mode Tauri: hanya pil yang tampil, scene desktop disembunyikan ---- */
+body.tauri{background:transparent}
+body.tauri .desktop{background:transparent}
+body.tauri .sun,body.tauri .sunset,body.tauri .horizon,body.tauri .hint,body.tauri .switcher,body.tauri .taskbar{display:none}
+body.tauri .notch{position:fixed;box-shadow:0 4px 0 rgba(255,176,32,.35)}
+</style>
+</head>
+<body>
+<div class="desktop">
+  <div class="sunset"></div><div class="sun"></div><div class="horizon"></div>
+  <div class="hint"><b>notch v0.1.</b> Arahkan kursor ke pil hitam di atas, atau pakai tombol keadaan di bawah.<br>Di browser ini jalan mode demo. Di aplikasi Windows, datanya dari lagu asli.</div>
+
+  <div class="notch" id="notch">
+    <div class="collapsed">
+      <span class="eq" id="eq"><i></i><i></i><i></i><i></i></span>
+      <span class="ticker" id="ticker"><span id="tickerText"></span></span>
+      <span class="clock disp" id="clock">18:55</span>
+    </div>
+    <div class="expanded">
+      <div class="seg" id="seg">
+        <button data-v="musik" class="on">Musik</button>
+        <button data-v="lirik">Lirik</button>
+        <button data-v="fokus">Fokus</button>
+        <button data-v="todo">Todo</button>
+        <button data-v="rak">Rak</button>
+      </div>
+
+      <div class="view show" id="v-musik">
+        <div class="music">
+          <div class="cover"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+          <div><h3 id="trackTitle">Langit Sore</h3><p id="trackArtist">Arka · Senja Pulang</p></div>
+          <div class="controls">
+            <button id="prevBtn" title="Sebelumnya"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+            <button class="play" id="playBtn" title="Putar/Jeda"><svg id="playIco" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+            <button id="nextBtn" title="Berikutnya"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+          </div>
+        </div>
+        <div class="progress"><div class="bar"><i id="progBar"></i></div><div class="times"><span id="tCur">01:17</span><span id="tRem">-01:47</span></div></div>
+        <p style="font-size:12px;color:#8A8A93;margin-top:14px;line-height:1.7">Lagu dari pemutar apa pun di Windows muncul di sini otomatis. Buka tab <b style="color:#F5F3EE">Lirik</b> buat lirik sinkronnya.</p>
+      </div>
+
+      <div class="view" id="v-lirik">
+        <div class="music" style="margin-bottom:4px">
+          <div><h3 id="trackTitle2">Langit Sore</h3><p id="trackArtist2">Arka · Senja Pulang</p></div>
+          <div class="controls">
+            <button id="playBtn2" class="play" title="Putar/Jeda"><svg id="playIco2" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+          </div>
+        </div>
+        <div class="lyrics" id="lyricsEl"></div>
+        <p style="font-size:11px;color:#6E6E78;margin-top:10px">Klik baris lirik buat loncat ke bagian itu.</p>
+      </div>
+
+      <div class="view" id="v-fokus">
+        <div class="pomo">
+          <div class="t disp" id="pomoTime">24:37</div>
+          <div class="ring"><i></i></div>
+          <button id="pomoBtn">Jeda</button>
+          <p>Sesi fokus 1 · mode deep work · bunyi lembut saat istirahat</p>
+        </div>
+      </div>
+
+      <div class="view" id="v-todo">
+        <div class="todo">
+          <label><input type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span><span>Revisi laporan mingguan</span></label>
+          <label><input type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span><span>Balas pesan Dina</span></label>
+          <label><input type="checkbox"><span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span><span>Posting update mingguan</span></label>
+        </div>
+      </div>
+
+      <div class="view" id="v-rak">
+        <div class="shelf">
+          <div class="file"><div class="fi"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div><div><b>draft.pdf</b><span>1,8 MB · klik buat buka</span></div></div>
+          <div class="file"><div class="fi"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></div><div><b>pantai.jpg</b><span>2,4 MB · seret keluar kapan saja</span></div></div>
+          <div class="file"><div class="fi"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><div><b>Proyek</b><span>Folder · 70 berkas</span></div></div>
+        </div>
+      </div>
+
+      <div class="view" id="v-diam">
+        <div class="idle">
+          <div class="wave"><i></i><i></i><i></i><i></i><i></i></div>
+          <p><b>Lagi nggak ada yang jalan.</b><br>Notch diam di tempat sampai ada musik, timer, atau pengingat yang muncul.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="switcher" id="switcher">
+    <button data-s="diam">Diam</button>
+    <button data-s="musik" class="on">Musik</button>
+    <button data-s="lirik">Lirik</button>
+    <button data-s="fokus">Fokus</button>
+    <button data-s="todo">Todo</button>
+    <button data-s="rak">Rak</button>
+  </div>
+
+  <div class="taskbar">
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 3h11v11H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h11v7H3z"/></svg></div>
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg></div>
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7 6h-3a15 15 0 0 0-1.3-3.3A8 8 0 0 1 19 8zM12 4a13 13 0 0 1 1.9 4h-3.8A13 13 0 0 1 12 4zM4.3 14H7a15 15 0 0 0 1.3 3.3A8 8 0 0 1 4.3 14zM4.3 10a8 8 0 0 1 4-3.3A15 15 0 0 0 7 10H4.3zM12 20a13 13 0 0 1-1.9-4h3.8A13 13 0 0 1 12 20zm2.6-6a15 15 0 0 0 1.3-4h3.2a8 8 0 0 1-4.5 4zM16.7 14a15 15 0 0 0-1.3-3.3A8 8 0 0 1 19.7 14h-3z"/></svg></div>
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+    <div class="tray">
+      <svg viewBox="0 0 24 24"><path d="M1 9l2 2a11 11 0 0 1 18 0l2-2a15 15 0 0 0-22 0z"/><path d="M5 13l2 2a7 7 0 0 1 10 0l2-2a11 11 0 0 0-14 0z"/><circle cx="12" cy="19" r="2"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+      <span>18:55<br>25 Okt 2026</span>
+    </div>
+  </div>
+</div>
+<script>
+const isTauri = !!(window.__TAURI__ && window.__TAURI__.core);
+if (isTauri) document.body.classList.add('tauri');
+const notch = document.getElementById('notch');
+const lyricsEl = document.getElementById('lyricsEl');
+
+let state = 'musik';
+let curLine = 0;
+let lines = [];           // [{t, text}] — sumber lirik aktif
+let playing = true;
+let trackKey = '';
+let trackDur = 0;
+
+function fmt(s){ s = Math.max(0, Math.floor(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function setTicker(text){
+  const el = document.getElementById('tickerText');
+  const line = text + '   ·   ';
+  el.innerHTML = '';
+  const a = document.createElement('span'); a.textContent = line;
+  const b = document.createElement('span'); b.textContent = line;
+  el.appendChild(a); el.appendChild(b);
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+}
+function renderLyrics(){
+  lyricsEl.innerHTML = lines.map(l=>`<div class="line">${l.text}</div>`).join('');
+  lyricsEl.querySelectorAll('.line').forEach((el,i)=>{
+    el.onclick = ()=>{
+      if (isTauri && window.__TAURI__.core) { /* seek menyusul di v0.2 */ }
+      else { demoT = lines[i].t + 1; }
+    };
+  });
+}
+function paintLines(pos){
+  let cur = 0;
+  lines.forEach((l,i)=>{ if (pos >= l.t) cur = i; });
+  if (cur !== curLine) {
+    curLine = cur;
+    if ((state === 'musik' || state === 'lirik') && lines[cur]) setTicker(lines[cur].text);
+  }
+  lyricsEl.querySelectorAll('.line').forEach((el,i)=>{
+    el.classList.toggle('cur', i === cur);
+    el.classList.toggle('sung', i < cur);
+  });
+  return cur;
+}
+function paintProgress(pos, dur){
+  if (!dur) return;
+  document.getElementById('progBar').style.width = (pos / dur * 100) + '%';
+  document.getElementById('tCur').textContent = fmt(pos);
+  document.getElementById('tRem').textContent = '-' + fmt(dur - pos);
+}
+function setPlaying(p){
+  playing = p;
+  document.getElementById('eq').classList.toggle('paused', !p);
+  document.getElementById('ticker').classList.toggle('paused', !p);
+  const pause = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+  const play = '<path d="M8 5v14l11-7z"/>';
+  document.getElementById('playIco').innerHTML = p ? pause : play;
+  document.getElementById('playIco2').innerHTML = p ? pause : play;
+}
+function setTrack(title, artist){
+  ['trackTitle','trackTitle2'].forEach(id=>document.getElementById(id).textContent = title);
+  ['trackArtist','trackArtist2'].forEach(id=>document.getElementById(id).textContent = artist);
+}
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('show'));
+  document.getElementById('v-'+v).classList.add('show');
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  document.querySelectorAll('#switcher button').forEach(b=>b.classList.toggle('on', b.dataset.s===v));
+  state = v;
+  if (v === 'diam') setTicker('Lagi diam');
+  else if ((v === 'musik' || v === 'lirik') && lines[curLine]) setTicker(lines[curLine].text);
+  else if (v === 'fokus') setTicker('Fokus · 24:37');
+  else if (v === 'todo') setTicker('Todo · 2 dari 3');
+  else if (v === 'rak') setTicker('Rak · 3 berkas');
+}
+function parseLrc(lrc){
+  const out = [];
+  lrc.split('\n').forEach(raw=>{
+    const m = raw.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/);
+    if (m && m[3].trim()) out.push({ t: parseInt(m[1],10)*60 + parseFloat(m[2]), text: m[3].trim() });
+  });
+  return out.sort((a,b)=>a.t-b.t);
+}
+function resizeTauri(w, h){
+  if (!isTauri) return;
+  try {
+    const win = window.__TAURI__.window.getCurrentWindow();
+    win.setSize(new window.__TAURI__.window.LogicalSize(w, h));
+  } catch (e) { /* abaikan di luar Tauri */ }
+}
+notch.addEventListener('mouseenter', ()=>{ if (isTauri) resizeTauri(560, 470); });
+notch.addEventListener('mouseleave', ()=>{ notch.classList.remove('open'); if (isTauri) resizeTauri(340, 36); });
+document.querySelectorAll('#seg button').forEach(b=>{ b.onclick = e=>{ e.stopPropagation(); showView(b.dataset.v); }; });
+document.querySelectorAll('#switcher button').forEach(b=>{ b.onclick = e=>{ e.stopPropagation(); showView(b.dataset.s); notch.classList.add('open'); }; });
+document.getElementById('playBtn').onclick = e=>{ e.stopPropagation(); onToggle(); };
+document.getElementById('playBtn2').onclick = e=>{ e.stopPropagation(); onToggle(); };
+document.getElementById('nextBtn').onclick = e=>{ e.stopPropagation(); onNext(); };
+document.getElementById('prevBtn').onclick = e=>{ e.stopPropagation(); onPrev(); };
+let pomoSec = 24*60 + 37, pomoRun = true;
+setInterval(()=>{ if (pomoRun && pomoSec > 0){ pomoSec--; document.getElementById('pomoTime').textContent = fmt(pomoSec); } }, 1000);
+document.getElementById('pomoBtn').onclick = e=>{ e.stopPropagation(); pomoRun = !pomoRun; document.getElementById('pomoBtn').textContent = pomoRun ? 'Jeda' : 'Lanjut'; };
+document.querySelectorAll('.todo label').forEach(l=>{
+  const inp = l.querySelector('input');
+  l.onclick = ()=>{ inp.checked = !inp.checked; l.classList.toggle('done', inp.checked); };
+  if (inp.checked) l.classList.add('done');
+});
+setInterval(()=>{
+  const d = new Date();
+  document.getElementById('clock').textContent = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}, 10000);
+
+/* ============ MODE DEMO (browser) ============ */
+const demoTracks = [
+  {title:'Langit Sore', artist:'Arka · Senja Pulang', dur:184, lines:[[0,'Di ujung hari yang perlahan pulang'],[8,'langit menulis namamu pelan pelan'],[16,'angin membawa kabar dari jauh'],[24,'tentang janji yang belum selesai'],[32,'kita berjalan di antara senja'],[40,'menuju rumah yang kita jaga']]},
+  {title:'Jalan Pulang', artist:'Arka · Senja Pulang', dur:172, lines:[[0,'Lampu kota mulai menyala satu satu'],[8,'jejak langkahku pulang ke arahmu'],[16,'di setiap tikungan ada ceritamu'],[24,'yang kutitipkan pada malam']]},
+];
+let demoTi = 0, demoT = 77;
+function demoLoad(i){
+  demoTi = (i + demoTracks.length) % demoTracks.length; demoT = 0; curLine = 0;
+  const tr = demoTracks[demoTi];
+  trackDur = tr.dur;
+  setTrack(tr.title, tr.artist);
+  lines = tr.lines.map(l=>({ t: l[0], text: l[1] }));
+  renderLyrics();
+  if (state === 'musik' || state === 'lirik') setTicker(lines[0].text);
+}
+function onToggle(){ if (isTauri) { window.__TAURI__.core.invoke('media_toggle'); } else { setPlaying(!playing); } }
+function onNext(){ if (isTauri) { window.__TAURI__.core.invoke('media_next'); } else { demoLoad(demoTi + 1); } }
+function onPrev(){ if (isTauri) { window.__TAURI__.core.invoke('media_prev'); } else { demoLoad(demoTi - 1); } }
+if (!isTauri) {
+  demoLoad(0);
+  setTicker(demoTracks[0].lines[5][1]);
+  setInterval(()=>{
+    if (playing) {
+      demoT = (demoT + 1) % demoTracks[demoTi].dur;
+      paintLines(demoT);
+      paintProgress(demoT, demoTracks[demoTi].dur);
+    }
+  }, 1000);
+}
+
+/* ============ MODE TAURI (aplikasi Windows asli) ============ */
+if (isTauri) {
+  const invoke = window.__TAURI__.core.invoke;
+  setInterval(async ()=>{
+    try {
+      const m = await invoke('get_media');
+      if (!m) { showView('diam'); setPlaying(false); return; }
+      const key = m.title + '|' + m.artist;
+      if (key !== trackKey) {
+        trackKey = key;
+        trackDur = m.durationSecs;
+        setTrack(m.title, m.artist);
+        const lyr = await invoke('get_lyrics', { artist: m.artist, title: m.title, album: m.album, durationSecs: m.durationSecs });
+        if (lyr && lyr.synced) { lines = parseLrc(lyr.synced); }
+        else if (lyr && lyr.plain) { lines = lyr.plain.split('\n').filter(Boolean).map((text,i)=>({ t: i * 5, text })); }
+        else { lines = []; }
+        curLine = 0;
+        renderLyrics();
+      }
+      setPlaying(m.playing);
+      paintLines(m.positionSecs);
+      paintProgress(m.positionSecs, m.durationSecs);
+      if (state === 'diam') showView('musik');
+    } catch (e) { /* backend belum siap: tetap diam */ }
+  }, 1000);
+}
+</script>
+</body>
+</html>

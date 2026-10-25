@@ -1,0 +1,46 @@
+# Build .exe Windows otomatis di cloud (GitHub Actions).
+# Cara pakai: push proyek ini ke repo GitHub, workflow jalan sendiri,
+# lalu download installer .exe dari halaman Releases repo tersebut.
+name: publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - run: npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: notch-v__VERSION__
+          releaseName: "notch v__VERSION__"
+          releaseBody: "Download installer .exe di bawah, lalu jalankan."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
